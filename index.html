@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>乒了个乓 · 报名系统</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    --red: #D42B2B; --dark: #1a1a1a; --cream: #F5F0E8;
+    --green: #2D6B4A; --blue: #1B4B8A; --orange: #D4612B; --ink: #2a2520;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--cream); color:var(--ink); font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei','微软雅黑',sans-serif; min-height:100vh; overflow-x:hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23F5F0E8'/%3E%3Crect x='0' y='0' width='1' height='1' fill='%23E8E0D0' opacity='0.5'/%3E%3C/svg%3E"); pointer-events:none; z-index:0; }
+
+  .page { display:none; position:relative; z-index:1; }
+  .page.active { display:block; }
+
+  /* MAIN */
+  .page-wrap { max-width:1000px; margin:0 auto; padding:40px 20px 60px; }
+  .header { text-align:center; margin-bottom:50px; }
+  .header::before,.header::after { content:''; display:block; width:80px; height:4px; background:var(--red); margin:20px auto; }
+  .header::before { margin-bottom:20px; }
+  .title-main { font-family:'Songti SC','SimSun','STSong',serif; font-size:clamp(28px,6vw,52px); font-weight:900; color:var(--ink); letter-spacing:0.1em; }
+  .title-ball { color:var(--red); display:inline-block; animation:spin 3s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .title-sub { font-size:clamp(12px,2.5vw,16px); font-weight:300; letter-spacing:0.3em; color:#888; margin-top:10px; }
+  .title-en { font-size:11px; letter-spacing:0.25em; color:#aaa; margin-top:6px; }
+
+  .grid { display:grid; grid-template-columns:repeat(2,1fr); gap:24px; }
+  @media(max-width:640px){.grid{grid-template-columns:1fr;}}
+
+  .card { background:white; border-radius:4px; overflow:hidden; box-shadow:0 2px 20px rgba(0,0,0,0.08),0 0 0 1px rgba(0,0,0,0.05); transition:transform .25s,box-shadow .25s; cursor:pointer; }
+  .card:hover { transform:translateY(-4px); box-shadow:0 12px 40px rgba(0,0,0,0.15); }
+  .card-top { height:8px; }
+  .card.jishu .card-top{background:var(--blue);} .card.kuaizi .card-top{background:var(--green);} .card.chui .card-top{background:var(--orange);} .card.qiqiu .card-top{background:var(--red);}
+  .card-body { padding:22px 22px 18px; }
+  .event-num { font-size:10px; letter-spacing:0.25em; font-weight:700; text-transform:uppercase; margin-bottom:8px; }
+  .jishu .event-num{color:var(--blue);} .kuaizi .event-num{color:var(--green);} .chui .event-num{color:var(--orange);} .qiqiu .event-num{color:var(--red);}
+  .event-name { font-family:'Songti SC','SimSun','STSong',serif; font-size:clamp(18px,4vw,24px); font-weight:700; color:var(--ink); margin-bottom:4px; }
+  .event-desc { font-size:12px; color:#999; margin-bottom:14px; line-height:1.6; }
+  .badge-row { display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; align-items:center; }
+  .badge,.count-badge { font-size:11px; padding:3px 10px; border-radius:2px; font-weight:500; }
+  .jishu .badge,.jishu .count-badge{background:#EBF0FA;color:var(--blue);}
+  .kuaizi .badge,.kuaizi .count-badge{background:#EBF5EF;color:var(--green);}
+  .chui .badge,.chui .count-badge{background:#FAF0EB;color:var(--orange);}
+  .qiqiu .badge,.qiqiu .count-badge{background:#FAEBEB;color:var(--red);}
+
+  .qr-section { display:flex; flex-direction:column; align-items:center; padding:18px 0 10px; border-top:1px solid #f0ede8; }
+  .qr-box { width:140px; height:140px; display:flex; align-items:center; justify-content:center; position:relative; margin-bottom:10px; }
+  .qr-box canvas,.qr-box img { width:130px!important; height:130px!important; }
+  .qr-corner { position:absolute; width:14px; height:14px; border-color:currentColor; border-style:solid; }
+  .qr-corner.tl{top:0;left:0;border-width:2px 0 0 2px;} .qr-corner.tr{top:0;right:0;border-width:2px 2px 0 0;}
+  .qr-corner.bl{bottom:0;left:0;border-width:0 0 2px 2px;} .qr-corner.br{bottom:0;right:0;border-width:0 2px 2px 0;}
+  .jishu .qr-corner{color:var(--blue);} .kuaizi .qr-corner{color:var(--green);} .chui .qr-corner{color:var(--orange);} .qiqiu .qr-corner{color:var(--red);}
+  .qr-label { font-size:11px; letter-spacing:0.2em; color:#bbb; }
+
+  .scan-hint { text-align:center; margin-bottom:40px; }
+  .scan-hint span { display:inline-block; background:white; padding:8px 20px; border-radius:20px; border:1px solid #E8E0D5; font-size:12px; color:#aaa; }
+  .admin-entry { text-align:center; margin-top:40px; }
+  .admin-btn { background:none; border:1px solid #ddd; color:#bbb; font-size:11px; padding:6px 18px; border-radius:20px; cursor:pointer; font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei','微软雅黑',sans-serif; letter-spacing:0.1em; transition:all .2s; }
+  .admin-btn:hover { border-color:var(--ink); color:var(--ink); }
+  .footer { text-align:center; margin-top:30px; font-size:11px; color:#ccc; letter-spacing:0.2em; }
+
+  /* MODAL */
+  .overlay { display:none; position:fixed; inset:0; background:rgba(26,20,15,0.75); z-index:100; backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:20px; }
+  .overlay.active { display:flex; }
+  .modal { background:white; width:100%; max-width:420px; max-height:90vh; overflow-y:auto; border-radius:4px; box-shadow:0 20px 60px rgba(0,0,0,0.3); animation:slideUp .3s ease; }
+  @keyframes slideUp { from{transform:translateY(30px);opacity:0;} to{transform:translateY(0);opacity:1;} }
+  .modal-header { padding:20px 22px 16px; border-bottom:1px solid #f0ede8; position:sticky; top:0; background:white; z-index:1; }
+  .modal-header-top { display:flex; justify-content:space-between; align-items:flex-start; }
+  .modal-title { font-family:'Songti SC','SimSun','STSong',serif; font-size:18px; font-weight:700; color:var(--ink); }
+  .modal-sub { font-size:11px; color:#aaa; letter-spacing:0.15em; margin-top:4px; }
+  .modal-stripe { height:4px; border-radius:2px; margin-top:12px; }
+  .close-btn { background:none; border:none; font-size:20px; color:#ccc; cursor:pointer; padding:0 4px; line-height:1; }
+  .close-btn:hover { color:var(--ink); }
+  .modal-body { padding:22px 22px 26px; }
+  .section-label { font-size:10px; font-weight:700; letter-spacing:0.25em; color:#bbb; text-transform:uppercase; margin:20px 0 12px; }
+  .section-label:first-child { margin-top:0; }
+  .field { margin-bottom:14px; }
+  .field label { display:block; font-size:12px; font-weight:500; color:#666; margin-bottom:5px; }
+  .field label .req { color:var(--red); margin-left:2px; }
+  .field input { width:100%; border:1px solid #E8E0D5; border-radius:3px; padding:9px 12px; font-size:14px; font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei','微软雅黑',sans-serif; color:var(--ink); background:#FDFCFA; outline:none; transition:border-color .15s,box-shadow .15s; }
+  .field input::placeholder { color:#ccc; }
+  .field-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .member-block { background:#FDFCFA; border:1px solid #EDE8E0; border-radius:3px; padding:14px; margin-bottom:10px; }
+  .member-block-title { font-size:11px; font-weight:700; color:#999; letter-spacing:0.1em; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+  .member-num { width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; color:white; font-weight:700; }
+  .submit-btn { width:100%; padding:13px; border:none; border-radius:3px; font-size:15px; font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei','微软雅黑',sans-serif; font-weight:700; color:white; cursor:pointer; letter-spacing:0.15em; margin-top:24px; transition:opacity .15s,transform .15s; }
+  .submit-btn:disabled { opacity:0.6; cursor:not-allowed; transform:none!important; }
+  .submit-btn:hover:not(:disabled) { opacity:.9; transform:translateY(-1px); }
+  .error-msg { color:var(--red); font-size:12px; margin-top:4px; display:none; }
+  .field.error input { border-color:var(--red); }
+  .field.error .error-msg { display:block; }
+  .success-wrap { text-align:center; padding:40px 20px; }
+  .success-icon { font-size:48px; margin-bottom:16px; }
+  .success-title { font-family:'Songti SC','SimSun','STSong',serif; font-size:20px; font-weight:700; margin-bottom:8px; }
+  .success-text { font-size:13px; color:#999; line-height:1.7; }
+
+  /* ADMIN */
+  #page-admin { min-height:100vh; }
+  .admin-wrap { max-width:960px; margin:0 auto; padding:30px 20px 60px; }
+  .admin-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:30px; flex-wrap:wrap; gap:12px; }
+  .admin-title { font-family:'Songti SC','SimSun','STSong',serif; font-size:22px; font-weight:700; }
+  .admin-back { background:none; border:1px solid #ddd; color:#888; font-size:12px; padding:6px 16px; border-radius:20px; cursor:pointer; font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei','微软雅黑',sans-serif; transition:all .2s; }
+  .admin-back:hover { border-color:var(--ink); color:var(--ink); }
+  .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:28px; }
+  @media(max-width:600px){.stats-row{grid-template-columns:repeat(2,1fr);}}
+  .stat-card { background:white; border-radius:4px; padding:16px; box-shadow:0 1px 8px rgba(0,0,0,0.06); text-align:center; }
+  .stat-num { font-family:'Songti SC','SimSun','STSong',serif; font-size:32px; font-weight:900; line-height:1; margin-bottom:6px; }
+  .stat-label { font-size:11px; color:#aaa; letter-spacing:0.1em; }
+  .s1 .stat-num{color:var(--blue);} .s2 .stat-num{color:var(--green);} .s3 .stat-num{color:var(--orange);} .s4 .stat-num{color:var(--red);}
+  .event-section { margin-bottom:28px; }
+  .event-section-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding-bottom:10px; border-bottom:2px solid; }
+  .e-head-jishu{border-color:var(--blue);} .e-head-kuaizi{border-color:var(--green);} .e-head-chui{border-color:var(--orange);} .e-head-qiqiu{border-color:var(--red);}
+  .event-section-title { font-family:'Songti SC','SimSun','STSong',serif; font-size:17px; font-weight:700; }
+  .event-section-count { font-size:12px; color:#aaa; }
+  .table-wrap { overflow-x:auto; border-radius:4px; box-shadow:0 1px 8px rgba(0,0,0,0.06); }
+  table { width:100%; border-collapse:collapse; background:white; font-size:13px; min-width:500px; }
+  th { background:#f8f5f0; font-weight:500; font-size:11px; letter-spacing:0.08em; color:#888; padding:10px 14px; text-align:left; border-bottom:1px solid #f0ede8; white-space:nowrap; }
+  td { padding:10px 14px; border-bottom:1px solid #f8f5f0; color:var(--ink); vertical-align:top; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:#fdfcfa; }
+  .empty-row td { color:#ccc; text-align:center; padding:24px; }
+  .export-btn { background:var(--ink); color:white; border:none; padding:7px 16px; border-radius:3px; font-size:12px; font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei','微软雅黑',sans-serif; cursor:pointer; transition:opacity .15s; }
+  .export-btn:hover { opacity:.8; }
+  .refresh-btn { background:none; border:1px solid #ddd; color:#888; padding:7px 14px; border-radius:3px; font-size:12px; font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei','微软雅黑',sans-serif; cursor:pointer; transition:all .15s; }
+  .refresh-btn:hover { border-color:var(--ink); color:var(--ink); }
+
+  /* LOGIN */
+  .login-overlay { position:fixed; inset:0; background:rgba(26,20,15,0.8); z-index:200; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px); }
+  .login-box { background:white; border-radius:4px; padding:36px 32px; width:320px; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+  .login-title { font-family:'Songti SC','SimSun','STSong',serif; font-size:18px; font-weight:700; margin-bottom:6px; }
+  .login-sub { font-size:12px; color:#aaa; margin-bottom:24px; }
+  .login-field { margin-bottom:16px; }
+  .login-field label { display:block; font-size:12px; color:#888; margin-bottom:6px; }
+  .login-field input { width:100%; border:1px solid #E8E0D5; border-radius:3px; padding:10px 12px; font-size:14px; font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei','微软雅黑',sans-serif; outline:none; }
+  .login-field input:focus { border-color:var(--ink); }
+  .login-btn { width:100%; padding:11px; background:var(--ink); color:white; border:none; border-radius:3px; font-size:14px; font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei','微软雅黑',sans-serif; font-weight:500; cursor:pointer; margin-top:8px; }
+  .login-err { color:var(--red); font-size:12px; margin-top:8px; display:none; }
+  .login-cancel { width:100%; padding:9px; background:none; border:1px solid #e8e0d5; color:#aaa; border-radius:3px; font-size:13px; font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei','微软雅黑',sans-serif; cursor:pointer; margin-top:8px; }
+
+  /* LOADING */
+  .loading-bar { position:fixed; top:0; left:0; height:3px; background:var(--red); width:0; transition:width .3s; z-index:999; }
+  .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:var(--ink); color:white; padding:10px 22px; border-radius:20px; font-size:13px; letter-spacing:0.05em; opacity:0; transition:opacity .3s; z-index:999; pointer-events:none; white-space:nowrap; }
+  .toast.show { opacity:1; }
+  .spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.3); border-top-color:white; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:6px; }
+</style>
+</head>
+<body>
+
+<div class="loading-bar" id="loading-bar"></div>
+<div class="toast" id="toast"></div>
+
+<!-- MAIN PAGE -->
+<div id="page-main" class="page active">
+<div class="page-wrap">
+  <header class="header">
+    <div class="title-main">乒了个乓 <span class="title-ball">🏓</span> 比赛报名</div>
+    <div class="title-sub">体育文化节 · 乒乓球班级杯</div>
+    <div class="title-en">Sports & Culture Festival — Table Tennis Event</div>
+  </header>
+  <div class="scan-hint"><span>📱 点击卡片填写报名表 · 或扫描二维码报名</span></div>
+
+  <div class="grid">
+    <div class="card jishu" onclick="openModal('jishu')">
+      <div class="card-top"></div>
+      <div class="card-body">
+        <div class="event-num">Project 01 · 竞技板块</div>
+        <div class="event-name">竞技双打</div>
+        <div class="event-desc">两人一组，同班级/课题组搭档，小组赛+淘汰赛，三局两胜制</div>
+        <div class="badge-row"><span class="badge">2人/队</span><span class="badge">队长+成员×1</span><span class="count-badge" id="count-jishu">加载中…</span></div>
+        <div class="qr-section"><div class="qr-box"><div class="qr-corner tl"></div><div class="qr-corner tr"></div><div class="qr-corner bl"></div><div class="qr-corner br"></div><div id="qr-jishu"></div></div><div class="qr-label">SCAN TO REGISTER</div></div>
+      </div>
+    </div>
+    <div class="card kuaizi" onclick="openModal('kuaizi')">
+      <div class="card-top"></div>
+      <div class="card-body">
+        <div class="event-num">Project 02 · 趣味板块</div>
+        <div class="event-name">筷子夹球</div>
+        <div class="event-desc">4人接力，用筷子夹球运送，3分钟内运送数量最多者胜</div>
+        <div class="badge-row"><span class="badge">4人/队</span><span class="badge">队长+成员×3</span><span class="count-badge" id="count-kuaizi">加载中…</span></div>
+        <div class="qr-section"><div class="qr-box"><div class="qr-corner tl"></div><div class="qr-corner tr"></div><div class="qr-corner bl"></div><div class="qr-corner br"></div><div id="qr-kuaizi"></div></div><div class="qr-label">SCAN TO REGISTER</div></div>
+      </div>
+    </div>
+    <div class="card chui" onclick="openModal('chui')">
+      <div class="card-top"></div>
+      <div class="card-body">
+        <div class="event-num">Project 03 · 趣味板块</div>
+        <div class="event-name">吹球过河</div>
+        <div class="event-desc">4人接力，嘴吹乒乓球逐杯推进，计时赛，用时最短者胜</div>
+        <div class="badge-row"><span class="badge">4人/队</span><span class="badge">队长+成员×3</span><span class="count-badge" id="count-chui">加载中…</span></div>
+        <div class="qr-section"><div class="qr-box"><div class="qr-corner tl"></div><div class="qr-corner tr"></div><div class="qr-corner bl"></div><div class="qr-corner br"></div><div id="qr-chui"></div></div><div class="qr-label">SCAN TO REGISTER</div></div>
+      </div>
+    </div>
+    <div class="card qiqiu" onclick="openModal('qiqiu')">
+      <div class="card-top"></div>
+      <div class="card-body">
+        <div class="event-num">Project 04 · 趣味板块</div>
+        <div class="event-name">气球乒乓</div>
+        <div class="event-desc">2人双打，气球代替乒乓球，特殊Buff规则，三局两胜制</div>
+        <div class="badge-row"><span class="badge">2人/队</span><span class="badge">队长+成员×1</span><span class="count-badge" id="count-qiqiu">加载中…</span></div>
+        <div class="qr-section"><div class="qr-box"><div class="qr-corner tl"></div><div class="qr-corner tr"></div><div class="qr-corner bl"></div><div class="qr-corner br"></div><div id="qr-qiqiu"></div></div><div class="qr-label">SCAN TO REGISTER</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-entry"><button class="admin-btn" onclick="showLogin()">管理员入口</button></div>
+  <div class="footer">体育文化节 · 乒乓球班级杯 · 快乐乒乓 一拍即合</div>
+</div>
+</div>
+
+<!-- ADMIN PAGE -->
+<div id="page-admin" class="page">
+<div class="admin-wrap">
+  <div class="admin-header">
+    <div class="admin-title">🏓 报名数据统计</div>
+    <div style="display:flex;gap:8px;">
+      <button class="refresh-btn" onclick="loadAdminData()">↻ 刷新</button>
+      <button class="admin-back" onclick="showMain()">← 返回报名页</button>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card s1"><div class="stat-num" id="stat-jishu">—</div><div class="stat-label">竞技双打</div></div>
+    <div class="stat-card s2"><div class="stat-num" id="stat-kuaizi">—</div><div class="stat-label">筷子夹球</div></div>
+    <div class="stat-card s3"><div class="stat-num" id="stat-chui">—</div><div class="stat-label">吹球过河</div></div>
+    <div class="stat-card s4"><div class="stat-num" id="stat-qiqiu">—</div><div class="stat-label">气球乒乓</div></div>
+  </div>
+
+  <div class="event-section">
+    <div class="event-section-head e-head-jishu">
+      <span class="event-section-title" style="color:var(--blue)">竞技双打</span>
+      <div style="display:flex;gap:10px;align-items:center"><span class="event-section-count" id="admin-count-jishu">共 0 队</span><button class="export-btn" onclick="exportCSV('jishu')">导出 CSV</button></div>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>报名单位</th><th>队伍名称</th><th>队长</th><th>学号</th><th>手机号</th><th>搭档</th><th>搭档学号</th><th>报名时间</th></tr></thead><tbody id="tbody-jishu"><tr class="empty-row"><td colspan="9">加载中…</td></tr></tbody></table></div>
+  </div>
+  <div class="event-section">
+    <div class="event-section-head e-head-kuaizi">
+      <span class="event-section-title" style="color:var(--green)">筷子夹球</span>
+      <div style="display:flex;gap:10px;align-items:center"><span class="event-section-count" id="admin-count-kuaizi">共 0 队</span><button class="export-btn" onclick="exportCSV('kuaizi')">导出 CSV</button></div>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>报名单位</th><th>队伍名称</th><th>队长</th><th>学号</th><th>手机号</th><th>队员1</th><th>学号1</th><th>队员2</th><th>学号2</th><th>队员3</th><th>学号3</th><th>报名时间</th></tr></thead><tbody id="tbody-kuaizi"><tr class="empty-row"><td colspan="13">加载中…</td></tr></tbody></table></div>
+  </div>
+  <div class="event-section">
+    <div class="event-section-head e-head-chui">
+      <span class="event-section-title" style="color:var(--orange)">吹球过河</span>
+      <div style="display:flex;gap:10px;align-items:center"><span class="event-section-count" id="admin-count-chui">共 0 队</span><button class="export-btn" onclick="exportCSV('chui')">导出 CSV</button></div>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>报名单位</th><th>队伍名称</th><th>队长</th><th>学号</th><th>手机号</th><th>队员1</th><th>学号1</th><th>队员2</th><th>学号2</th><th>队员3</th><th>学号3</th><th>报名时间</th></tr></thead><tbody id="tbody-chui"><tr class="empty-row"><td colspan="13">加载中…</td></tr></tbody></table></div>
+  </div>
+  <div class="event-section">
+    <div class="event-section-head e-head-qiqiu">
+      <span class="event-section-title" style="color:var(--red)">气球乒乓</span>
+      <div style="display:flex;gap:10px;align-items:center"><span class="event-section-count" id="admin-count-qiqiu">共 0 队</span><button class="export-btn" onclick="exportCSV('qiqiu')">导出 CSV</button></div>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>报名单位</th><th>队伍名称</th><th>队长</th><th>学号</th><th>手机号</th><th>搭档</th><th>搭档学号</th><th>报名时间</th></tr></thead><tbody id="tbody-qiqiu"><tr class="empty-row"><td colspan="9">加载中…</td></tr></tbody></table></div>
+  </div>
+</div>
+</div>
+
+<!-- FORM MODAL -->
+<div class="overlay" id="overlay" onclick="handleOverlayClick(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div class="modal-header-top">
+        <div><div class="modal-title" id="modal-title"></div><div class="modal-sub" id="modal-sub"></div></div>
+        <button class="close-btn" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-stripe" id="modal-stripe"></div>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="login-overlay" id="login-overlay" style="display:none">
+  <div class="login-box">
+    <div class="login-title">管理员登录</div>
+    <div class="login-sub">请输入管理员密码查看报名数据</div>
+    <div class="login-field"><label>密码</label><input type="password" id="login-pwd" placeholder="请输入密码" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="login-err" id="login-err">密码错误，请重试</div>
+    <button class="login-btn" onclick="doLogin()">进入管理后台</button>
+    <button class="login-cancel" onclick="hideLogin()">取消</button>
+  </div>
+</div>
+
+<script>
+// ========== CONFIG ==========
+const ADMIN_PASSWORD = 'pingpang2026';
+
+const events = {
+  jishu:  { name:'竞技双打', sub:'Project 01 · 竞技板块', color:'#1B4B8A', members:1, label:'搭档' },
+  kuaizi: { name:'筷子夹球', sub:'Project 02 · 趣味板块', color:'#2D6B4A', members:3, label:'队员' },
+  chui:   { name:'吹球过河', sub:'Project 03 · 趣味板块', color:'#D4612B', members:3, label:'队员' },
+  qiqiu:  { name:'气球乒乓', sub:'Project 04 · 趣味板块', color:'#D42B2B', members:1, label:'搭档' },
+};
+
+// ========== CLOUD STORAGE ==========
+// Each event stored as: key = "reg:{eventKey}", value = JSON array of records
+// Count stored as: key = "cnt:{eventKey}", shared = true
+
+async function cloudGet(key) {
+  try {
+    const result = await window.storage.get(key, true);
+    return result ? JSON.parse(result.value) : null;
+  } catch(e) { return null; }
+}
+
+async function cloudSet(key, value) {
+  try {
+    await window.storage.set(key, JSON.stringify(value), true);
+    return true;
+  } catch(e) { return false; }
+}
+
+async function getRegistrations(eventKey) {
+  const data = await cloudGet('reg:' + eventKey);
+  return Array.isArray(data) ? data : [];
+}
+
+async function saveRegistration(eventKey, record) {
+  // Use a unique key per record to avoid race conditions and support thousands of entries
+  const id = Date.now() + '_' + Math.random().toString(36).slice(2,7);
+  record.id = id;
+  record.time = new Date().toLocaleString('zh-CN', { hour12:false });
+  await cloudSet('rec:' + eventKey + ':' + id, record);
+
+  // Update count
+  const cnt = (await cloudGet('cnt:' + eventKey)) || 0;
+  await cloudSet('cnt:' + eventKey, cnt + 1);
+  return true;
+}
+
+async function getAllRegistrations(eventKey) {
+  // List all keys with prefix rec:{eventKey}:
+  try {
+    const result = await window.storage.list('rec:' + eventKey + ':', true);
+    if (!result || !result.keys || result.keys.length === 0) return [];
+    const records = await Promise.all(
+      result.keys.map(k => cloudGet(k))
+    );
+    return records.filter(Boolean).sort((a,b) => (a.time > b.time ? 1 : -1));
+  } catch(e) { return []; }
+}
+
+async function getCount(eventKey) {
+  const cnt = await cloudGet('cnt:' + eventKey);
+  return typeof cnt === 'number' ? cnt : 0;
+}
+
+// ========== UI HELPERS ==========
+function setLoading(pct) {
+  document.getElementById('loading-bar').style.width = pct + '%';
+  if (pct >= 100) setTimeout(() => { document.getElementById('loading-bar').style.width = '0'; }, 400);
+}
+
+function showToast(msg, duration=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ========== COUNTS ==========
+async function updateCounts() {
+  const keys = Object.keys(events);
+  const counts = await Promise.all(keys.map(k => getCount(k)));
+  keys.forEach((k, i) => {
+    const el = document.getElementById('count-' + k);
+    if (el) el.textContent = '已报名 ' + counts[i] + ' 队';
+  });
+}
+
+// ========== PAGES ==========
+function showMain() {
+  document.getElementById('page-main').classList.add('active');
+  document.getElementById('page-admin').classList.remove('active');
+  updateCounts();
+}
+
+function showAdmin() {
+  document.getElementById('page-main').classList.remove('active');
+  document.getElementById('page-admin').classList.add('active');
+  loadAdminData();
+}
+
+// ========== LOGIN ==========
+function showLogin() {
+  document.getElementById('login-overlay').style.display = 'flex';
+  document.getElementById('login-pwd').value = '';
+  document.getElementById('login-err').style.display = 'none';
+  setTimeout(() => document.getElementById('login-pwd').focus(), 100);
+}
+function hideLogin() { document.getElementById('login-overlay').style.display = 'none'; }
+function doLogin() {
+  if (document.getElementById('login-pwd').value === ADMIN_PASSWORD) {
+    hideLogin(); showAdmin();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+    document.getElementById('login-pwd').value = '';
+    document.getElementById('login-pwd').focus();
+  }
+}
+
+// ========== ADMIN ==========
+async function loadAdminData() {
+  setLoading(20);
+  const keys = Object.keys(events);
+  const allData = {};
+
+  // Load all in parallel
+  setLoading(40);
+  const results = await Promise.all(keys.map(k => getAllRegistrations(k)));
+  keys.forEach((k, i) => { allData[k] = results[i]; });
+  setLoading(80);
+
+  // Render
+  keys.forEach(key => {
+    const rows = allData[key];
+    const n = rows.length;
+    document.getElementById('stat-' + key).textContent = n;
+    document.getElementById('admin-count-' + key).textContent = '共 ' + n + ' 队';
+    const tbody = document.getElementById('tbody-' + key);
+    const e = events[key];
+    const is2 = e.members === 1;
+    if (n === 0) {
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="${is2?9:13}">暂无报名数据</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map((r, i) => is2
+      ? `<tr><td>${i+1}</td><td>${r.unit}</td><td>${r.team}</td><td>${r.captain}</td><td>${r.captainId}</td><td>${r.phone}</td><td>${r.m1name||''}</td><td>${r.m1id||''}</td><td>${r.time}</td></tr>`
+      : `<tr><td>${i+1}</td><td>${r.unit}</td><td>${r.team}</td><td>${r.captain}</td><td>${r.captainId}</td><td>${r.phone}</td><td>${r.m1name||''}</td><td>${r.m1id||''}</td><td>${r.m2name||''}</td><td>${r.m2id||''}</td><td>${r.m3name||''}</td><td>${r.m3id||''}</td><td>${r.time}</td></tr>`
+    ).join('');
+  });
+
+  setLoading(100);
+  showToast('数据已更新');
+
+  // Store for export
+  window._adminData = allData;
+}
+
+// ========== EXPORT ==========
+function exportCSV(key) {
+  const data = window._adminData;
+  if (!data || !data[key] || data[key].length === 0) { showToast('暂无数据可导出'); return; }
+  const rows = data[key];
+  const e = events[key];
+  const is2 = e.members === 1;
+  const header = is2
+    ? ['序号','报名单位','队伍名称','队长姓名','队长学号','队长手机号',e.label+'姓名',e.label+'学号','报名时间']
+    : ['序号','报名单位','队伍名称','队长姓名','队长学号','队长手机号','队员1','学号1','队员2','学号2','队员3','学号3','报名时间'];
+  const lines = rows.map((r,i) => is2
+    ? [i+1,r.unit,r.team,r.captain,r.captainId,r.phone,r.m1name||'',r.m1id||'',r.time]
+    : [i+1,r.unit,r.team,r.captain,r.captainId,r.phone,r.m1name||'',r.m1id||'',r.m2name||'',r.m2id||'',r.m3name||'',r.m3id||'',r.time]
+  );
+  const csv = '\uFEFF' + [header,...lines].map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download = e.name + '_报名名单.csv';
+  a.click();
+}
+
+// ========== FORM ==========
+let currentEvent = null;
+
+function buildForm(key) {
+  const e = events[key];
+  const c = e.color;
+  const nb = n => `<div class="member-num" style="background:${c}">${n}</div>`;
+  let mhtml = '';
+  for (let i=1; i<=e.members; i++) {
+    mhtml += `<div class="member-block">
+      <div class="member-block-title">${nb(i)} ${e.label} ${i}</div>
+      <div class="field" id="f-m${i}name"><label>姓名 <span class="req">*</span></label><input type="text" placeholder="请输入姓名" id="m${i}name"><div class="error-msg">请填写姓名</div></div>
+      <div class="field" id="f-m${i}id"><label>学号 <span class="req">*</span></label><input type="text" placeholder="请输入学号" id="m${i}id" inputmode="numeric"><div class="error-msg">请填写学号</div></div>
+    </div>`;
+  }
+  return `
+    <div class="section-label">班级信息</div>
+    <div class="field" id="f-unit"><label>报名单位（班级/课题组）<span class="req">*</span></label><input type="text" placeholder="如：计算机2101班" id="unit"><div class="error-msg">请填写报名单位</div></div>
+    <div class="field" id="f-team"><label>队伍名称 <span class="req">*</span></label><input type="text" placeholder="给队伍取个名字" id="team"><div class="error-msg">请填写队伍名称</div></div>
+    <div class="section-label">队长信息</div>
+    <div class="field" id="f-captain"><label>队长姓名 <span class="req">*</span></label><input type="text" placeholder="请输入姓名" id="captain"><div class="error-msg">请填写队长姓名</div></div>
+    <div class="field-row">
+      <div class="field" id="f-captainId"><label>学号 <span class="req">*</span></label><input type="text" placeholder="请输入学号" id="captainId" inputmode="numeric"><div class="error-msg">请填写学号</div></div>
+      <div class="field" id="f-phone"><label>手机号 <span class="req">*</span></label><input type="tel" placeholder="请输入手机号" id="phone" inputmode="tel"><div class="error-msg">请填写有效手机号</div></div>
+    </div>
+    <div class="section-label">${e.label}信息（共 ${e.members} 人）</div>
+    ${mhtml}
+    <button class="submit-btn" id="submit-btn" style="background:${c}" onclick="submitForm('${key}')">提交报名</button>`;
+}
+
+function openModal(key) {
+  currentEvent = key;
+  const e = events[key];
+  document.getElementById('modal-title').textContent = e.name + ' — 报名表';
+  document.getElementById('modal-sub').textContent = e.sub;
+  document.getElementById('modal-stripe').style.background = e.color;
+  document.getElementById('modal-body').innerHTML = buildForm(key);
+  document.querySelectorAll('#modal-body input').forEach(inp => {
+    inp.addEventListener('focus', () => { inp.style.borderColor = e.color; inp.style.boxShadow = `0 0 0 3px ${e.color}22`; });
+    inp.addEventListener('blur',  () => { inp.style.borderColor = '#E8E0D5'; inp.style.boxShadow = 'none'; });
+    inp.addEventListener('input', () => { inp.closest('.field').classList.remove('error'); });
+  });
+  document.getElementById('overlay').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('overlay').classList.remove('active');
+  document.body.style.overflow = '';
+  currentEvent = null;
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('overlay')) closeModal();
+}
+
+function validatePhone(p) { return /^1[3-9]\d{9}$/.test(p.trim()); }
+
+function checkField(id, validator) {
+  const inp = document.getElementById(id);
+  if (!inp) return true;
+  const ok = validator ? validator(inp.value) : inp.value.trim() !== '';
+  inp.closest('.field').classList.toggle('error', !ok);
+  return ok;
+}
+
+async function submitForm(key) {
+  const e = events[key];
+  let valid = true;
+  valid = checkField('unit') && valid;
+  valid = checkField('team') && valid;
+  valid = checkField('captain') && valid;
+  valid = checkField('captainId') && valid;
+  valid = checkField('phone', validatePhone) && valid;
+  for (let i=1; i<=e.members; i++) {
+    valid = checkField('m'+i+'name') && valid;
+    valid = checkField('m'+i+'id') && valid;
+  }
+  if (!valid) { document.querySelector('#modal .modal-body').scrollTop = 0; return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>提交中…';
+
+  const record = {
+    unit: document.getElementById('unit').value.trim(),
+    team: document.getElementById('team').value.trim(),
+    captain: document.getElementById('captain').value.trim(),
+    captainId: document.getElementById('captainId').value.trim(),
+    phone: document.getElementById('phone').value.trim(),
+  };
+  for (let i=1; i<=e.members; i++) {
+    record['m'+i+'name'] = document.getElementById('m'+i+'name').value.trim();
+    record['m'+i+'id']   = document.getElementById('m'+i+'id').value.trim();
+  }
+
+  const ok = await saveRegistration(key, record);
+
+  if (ok) {
+    updateCounts();
+    document.getElementById('modal-body').innerHTML = `
+      <div class="success-wrap">
+        <div class="success-icon">🎉</div>
+        <div class="success-title" style="color:${e.color}">报名成功！</div>
+        <div class="success-text">已成功报名 <strong>${e.name}</strong><br>工作人员将与队长联系确认参赛信息<br><br><em>快乐乒乓，一拍即合！</em></div>
+        <button class="submit-btn" style="background:${e.color};margin-top:24px" onclick="closeModal()">完成</button>
+      </div>`;
+  } else {
+    btn.disabled = false;
+    btn.textContent = '提交报名';
+    showToast('提交失败，请重试');
+  }
+}
+
+// ========== QR CODES ==========
+const baseUrl = 'https://sythetichen.github.io/pingpang-sign-up/';
+[
+  { id:'qr-jishu',  color:'#1B4B8A', param:'jishu'  },
+  { id:'qr-kuaizi', color:'#2D6B4A', param:'kuaizi' },
+  { id:'qr-chui',   color:'#D4612B', param:'chui'   },
+  { id:'qr-qiqiu',  color:'#D42B2B', param:'qiqiu'  },
+].forEach(cfg => {
+  new QRCode(document.getElementById(cfg.id), {
+    text: baseUrl + '?event=' + cfg.param,
+    width:130, height:130, colorDark:cfg.color, colorLight:'#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+});
+
+// ========== INIT ==========
+updateCounts();
+const urlParam = new URLSearchParams(window.location.search).get('event');
+if (urlParam && events[urlParam]) window.addEventListener('load', () => openModal(urlParam));
+</script>
+</body>
+</html>
